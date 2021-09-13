@@ -266,14 +266,60 @@ function App() {
 
   function calculate() {
     //history 초기화, log 추가
-    setLog(
-      log.concat(
-        history[step].view +
-          ")".repeat(history[step].depth) +
-          " = " +
-          eval(history[step].expression + ")".repeat(history[step].depth))
-      )
+    const view = history[step].view + ")".repeat(history[step].depth);
+    const expression =
+      history[step].expression + ")".repeat(history[step].depth);
+    const result = eval(
+      history[step].expression + ")".repeat(history[step].depth)
     );
+
+    for (let i = 0; i < history[step].depth; i++) {
+      history.push({
+        view: history[step].view + ")".repeat(i + 1),
+        expression: history[step].expression + ")".repeat(i + 1),
+        isNumber: true,
+        isOperator: false,
+        isZero: false,
+        isClosed: true,
+        hasDot: false,
+        depth: history[step].depth - i - 1,
+      });
+    }
+    console.log(history);
+    const l = {
+      left: {
+        history: history,
+        step: step + history[step].depth,
+      },
+      right: {
+        history: [
+          {
+            view: "",
+            expression: "",
+            isNumber: false,
+            isOperator: false,
+            isZero: false,
+            isClosed: false,
+            hasDot: false,
+            depth: 0,
+          },
+          {
+            view: `${result}`,
+            expression: `${result}`,
+            isNumber: true,
+            isOperator: false,
+            isZero: result ? false : true,
+            hasDot: false,
+            depth: 0,
+          },
+        ],
+        step: 1,
+      },
+      result: result,
+      view: view,
+    };
+
+    setLog(log.concat(l));
     setHistory([
       {
         view: "",
@@ -281,13 +327,22 @@ function App() {
         isNumber: false,
         isOperator: false,
         isZero: false,
+        isClosed: false,
+        hasDot: false,
+        depth: 0,
+      },
+      {
+        view: `${result}`,
+        expression: `${result}`,
+        isNumber: true,
+        isOperator: false,
+        isZero: result ? false : true,
         hasDot: false,
         depth: 0,
       },
     ]);
-    setStep(0);
+    setStep(1);
   }
-  console.log(history[step].depth);
 
   return (
     <>
