@@ -7,7 +7,7 @@ function Screen(props) {
       <FormControl
         className="form-inline text-end"
         placeholder="0"
-        defaultValue={props.expression}
+        value={props.expression}
         onKeyDown={props.handleKeyDown}
       />
     </InputGroup>

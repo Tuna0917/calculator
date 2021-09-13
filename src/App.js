@@ -1,17 +1,30 @@
 import "./App.css";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { Container, Row, Col, InputGroup } from "react-bootstrap";
+import { Container, Row } from "react-bootstrap";
 import React, { useState } from "react";
 import Screen from "./Screen";
 import RightButton from "./RightButton";
+import Logs from "./Logs";
 
 function App() {
-  const [expression, setExpression] = useState("");
-  const [realExpression, setRealExpression] = useState("");
-  const [inputValue, setInputValue] = useState("");
-  const [isZero, setIsZero] = useState(false);
-  const [isOperator, setIsOperator] = useState(true);
-  const [history, setHistory] = useState([]); // 현재 진행 중인 연산
+  const operators = ["+", "-", "*", "/"];
+  const numbers = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+  const dot = ".";
+  const brackets = ["(", ")"];
+  const percent = "%";
+  const [step, setStep] = useState(0);
+  const [history, setHistory] = useState([
+    {
+      view: "",
+      expression: "",
+      isNumber: false,
+      isOperator: false,
+      isZero: false,
+      isClosed: false,
+      hasDot: false,
+      depth: 0,
+    },
+  ]);
   const [log, setLog] = useState([]); // 전체 연산
 
   const handleClick = (e) => {
@@ -23,39 +36,273 @@ function App() {
   };
 
   function input(value) {
-    if (isValid(value)) {
-      setInputValue(value);
+    const {
+      view,
+      expression,
+      isNumber,
+      isOperator,
+      isZero,
+      isClosed,
+      hasDot,
+      depth,
+    } = history[step];
 
-      if (value === "Backspace") {
-        setExpression(expression.slice(0, -1));
-      } else if (value === "=") {
-        setHistory([]);
-        calculate();
-        setExpression("");
-      } else {
-        setExpression(expression + value);
+    if (value === "Backspace") {
+      if (step > 0) {
+        history.pop();
+        setHistory(history);
+        setStep(step - 1);
       }
+    }
+
+    if (value === "=" || value === "Enter") {
+      if (isNumber) calculate();
+    }
+    // 사칙연산
+
+    if (operators.includes(value)) {
+      if (isOperator) {
+        replace(value);
+      } else {
+        if (step > 0) {
+          setHistory(
+            history.concat({
+              view: view + value,
+              expression: expression + value,
+              isNumber: false,
+              isOperator: true,
+              isZero: false,
+              isClosed: false,
+              hasDot: false,
+              depth: depth,
+            })
+          );
+          setStep(step + 1);
+        } else {
+          //맨 처음부터 사칙연산을 입력했을 때
+          setHistory(
+            history.concat(
+              {
+                view: "0",
+                expression: "0",
+                isNumber: true,
+                isOperator: false,
+                isZero: true,
+                isClosed: false,
+                hasDot: false,
+                depth: depth,
+              },
+              {
+                view: "0" + value,
+                expression: "0" + value,
+                isNumber: false,
+                isOperator: true,
+                isZero: false,
+                isClosed: false,
+                hasDot: false,
+                depth: depth,
+              }
+            )
+          );
+          setStep(2);
+        }
+      }
+    }
+
+    // 0~9
+    if (numbers.includes(value)) {
+      if (isZero) {
+        replace(value);
+      } else {
+        setHistory(
+          history.concat({
+            view: view + value,
+            expression: isClosed
+              ? expression + "*" + value
+              : expression + value,
+            isNumber: true,
+            isOperator: false,
+            isZero: value === "0" && !isNumber ? true : false,
+            isClosed: false,
+            hasDot: hasDot,
+            depth: depth,
+          })
+        );
+        setStep(step + 1);
+      }
+    }
+    //소숫점
+    if (value === ".") {
+      if (isNumber && !hasDot && !isClosed) {
+        setHistory(
+          history.concat({
+            view: view + value,
+            expression: expression + value,
+            isNumber: true,
+            isOperator: true,
+            isZero: false,
+            isClosed: false,
+            hasDot: true,
+            depth: depth,
+          })
+        );
+        setStep(step + 1);
+      }
+    }
+    // 괄호
+    if (brackets.includes(value)) {
+      if (value === "(") {
+        if (isNumber) {
+          if (hasDot && isOperator) {
+            setHistory(
+              history.concat({
+                view: view + "0*" + value,
+                expression: expression + "0*" + value,
+                isNumber: false,
+                isOperator: true,
+                isZero: false,
+                isClosed: false,
+                hasDot: false,
+                depth: depth + 1,
+              })
+            );
+          } else {
+            setHistory(
+              history.concat({
+                view: view + value,
+                expression: expression + "*" + value,
+                isNumber: false,
+                isOperator: true,
+                isZero: false,
+                isClosed: false,
+                hasDot: false,
+                depth: depth + 1,
+              })
+            );
+          }
+          setStep(step + 1);
+        } else {
+          setHistory(
+            history.concat({
+              view: view + value,
+              expression: expression + value,
+              isNumber: false,
+              isOperator: true,
+              isZero: false,
+              isClosed: false,
+              hasDot: false,
+              depth: depth + 1,
+            })
+          );
+          setStep(step + 1);
+        }
+      } else if (value === ")" && depth > 0) {
+        if (isNumber) {
+          if (hasDot && isOperator) {
+            // .으로 끝난 경우
+            setHistory(
+              history.concat({
+                view: view + value,
+                expression: expression + "0" + value,
+                isNumber: true,
+                isOperator: false,
+                isZero: false,
+                isClosed: true,
+                hasDot: false,
+                depth: depth - 1,
+              })
+            );
+            setStep(step + 1);
+          } else {
+            setHistory(
+              history.concat({
+                view: view + value,
+                expression: expression + value,
+                isNumber: true,
+                isOperator: false,
+                isZero: false,
+                isClosed: true,
+                hasDot: false,
+                depth: depth - 1,
+              })
+            );
+          }
+          setStep(step + 1);
+        }
+      }
+    }
+
+    if (value === "%" && isNumber) {
+      setHistory(
+        history.concat({
+          view: hasDot ? view + "0" + value : view + value,
+          expression: hasDot ? expression + "0*0.01" : expression + "0*0.01",
+          isNumber: true,
+          isOperator: false,
+          isZero: false,
+          isClosed: true,
+          hasDot: false,
+          depth: depth,
+        })
+      );
+      setStep(step + 1);
     }
   }
 
-  function isValid(value) {
-    return true;
+  function replace(value) {
+    const { isNumber, isOperator, isZero, hasDot, depth } = history[step];
+    setHistory(
+      history.slice(0, -1).concat({
+        view: history[step - 1].view + value,
+        expression: history[step - 1].expression + value,
+        isNumber: operators.includes(value) ? false : isNumber,
+        isOperator: operators.includes(value) ? true : false,
+        isZero: value === "0" ? true : false,
+        hasDot: value === "." ? true : false,
+        depth: depth,
+      })
+    );
   }
 
   function calculate() {
     //history 초기화, log 추가
-    return 0;
+    setLog(
+      log.concat(
+        history[step].view +
+          ")".repeat(history[step].depth) +
+          " = " +
+          eval(history[step].expression + ")".repeat(history[step].depth))
+      )
+    );
+    setHistory([
+      {
+        view: "",
+        expression: "",
+        isNumber: false,
+        isOperator: false,
+        isZero: false,
+        hasDot: false,
+        depth: 0,
+      },
+    ]);
+    setStep(0);
   }
+  console.log(history[step].depth);
 
   return (
     <>
       <Container className="px-4">
         <Row>
-          <Screen expression={expression} handleKeyDown={handleKeyDown} />
+          <Screen
+            expression={history[step].view}
+            handleKeyDown={handleKeyDown}
+          />
         </Row>
         <Row className="justify-content-between gx-5 g-2">
-          <RightButton expression={expression} handleClick={handleClick} />
+          <RightButton handleClick={handleClick} />
         </Row>
+
+        <Logs logs={log} />
       </Container>
     </>
   );
